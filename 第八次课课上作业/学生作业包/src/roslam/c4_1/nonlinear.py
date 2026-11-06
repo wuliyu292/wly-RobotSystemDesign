@@ -21,8 +21,8 @@ class SolveTrace:
     deltas: tuple[float, ...]
 
 
-def _cost(residuals: Sequence[float]) -> float:
-    return float(sum(r * r for r in residuals))
+def _cost(residual: float) -> float:
+    return float(residual * residual)
 
 
 def gauss_newton_1d(
@@ -34,10 +34,32 @@ def gauss_newton_1d(
     tol: float = 1e-10,
 ) -> SolveTrace:
     """Scalar GN: H=J², b=J·e, Δx=-b/H, x←x+Δx until |Δx|<tol or max_iters."""
-    # TODO: 初始化 xs/costs（含 x0）
-    # TODO: 迭代计算 e, J, H, b, delta；H==0 时停止
-    # TODO: 更新 x 并记录；|delta|<tol 停止
-    raise NotImplementedError("implement gauss_newton_1d")
+    xs = [x0]
+    costs = [_cost(residual(x0))]
+    deltas = []
+
+    x = x0
+    for _ in range(max_iters):
+        e = residual(x)
+        J = jacobian(x)
+        H = J * J
+        b = J * e
+
+        if H == 0.0:
+            deltas.append(0.0)
+            break
+
+        delta = -b / H
+        deltas.append(delta)
+        x = x + delta
+
+        xs.append(x)
+        costs.append(_cost(residual(x)))
+
+        if abs(delta) < tol:
+            break
+
+    return SolveTrace(xs=tuple(xs), costs=tuple(costs), deltas=tuple(deltas))
 
 
 def levenberg_marquardt_1d(
@@ -54,6 +76,40 @@ def levenberg_marquardt_1d(
     On success: λ ← max(λ/10, 1e-12). On failure: λ ← min(λ*10, 1e12),
     record delta=0 and keep x unchanged (still append to xs/costs).
     """
-    # TODO: 初始化 x、λ、轨迹
-    # TODO: 试探步；代价下降才接受并减小 λ，否则增大 λ
-    raise NotImplementedError("implement levenberg_marquardt_1d")
+    xs = [x0]
+    init_e = residual(x0)
+    costs = [_cost(init_e)]
+    deltas = []
+
+    x = x0
+    lam = lambda0
+
+    for _ in range(max_iters):
+        e = residual(x)
+        J = jacobian(x)
+        H = J * J
+        b = J * e
+
+        delta = -b / (H + lam)
+        x_candidate = x + delta
+        cost_candidate = _cost(residual(x_candidate))
+        current_cost = _cost(e)
+
+        if cost_candidate < current_cost:
+            # 接受步，更新x、缩小lambda
+            x = x_candidate
+            lam = max(lam / 10.0, 1e-12)
+            deltas.append(delta)
+        else:
+            # 拒绝步，x不变，delta=0，放大lambda
+            lam = min(lam * 10.0, 1e12)
+            delta = 0.0
+            deltas.append(delta)
+
+        xs.append(x)
+        costs.append(_cost(residual(x)))
+
+        if abs(delta) < tol:
+            break
+
+    return SolveTrace(xs=tuple(xs), costs=tuple(costs), deltas=tuple(deltas))

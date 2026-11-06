@@ -12,6 +12,20 @@ def weighted_mean_1d(measurements: Sequence[float], weights: Sequence[float]) ->
     * same length; at least one measurement
     * weights ≥ 0; total weight > 0 else ValueError
     """
-    # TODO: 校验长度与空输入
-    # TODO: 累加 Σ w、Σ w z，返回加权平均
-    raise NotImplementedError("implement weighted_mean_1d")
+    if len(measurements) != len(weights):
+        raise ValueError("measurements and weights length mismatch")
+    if len(measurements) == 0:
+        raise ValueError("empty input")
+
+    sum_w = 0.0
+    sum_wz = 0.0
+    for z, w in zip(measurements, weights):
+        if w < 0:
+            raise ValueError("negative weight not allowed")
+        sum_w += w
+        sum_wz += w * z
+
+    if sum_w <= 0.0:
+        raise ValueError("total weight must be > 0")
+
+    return sum_wz / sum_w
